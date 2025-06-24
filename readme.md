@@ -31,7 +31,7 @@ A powerful, clean, and modern Neovim setup for Linux users with full support for
 ### 1. 📥 Clone the repo (or just download the script)
 
 ```bash
-git clone https://github.com/yourusername/nvim-setup
+git clone https://github.com/HuiHola/neovim-setup.git
 cd nvim-setup
 chmod +x *
 ./setup.sh
