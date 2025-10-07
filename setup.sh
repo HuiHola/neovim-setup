@@ -162,6 +162,12 @@ lspconfig.lua_ls.setup {
     }
   }
 }
+vim.filetype.add({
+      extension = {
+        hbs = "html",
+      },
+})
+
 EOF
 
 echo "✅ Neovim setup completed!"
