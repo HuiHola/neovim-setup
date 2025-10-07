@@ -60,7 +60,7 @@ cat > ~/.config/nvim/init.lua << 'EOF'
 -- PLUGIN MANAGEMENT (vim-plug)
 vim.cmd [[
   call plug#begin('~/.vim/plugged')
-
+  Plug 'mustache/vim-mustache-handlebars'
   Plug 'nvim-tree/nvim-tree.lua'
   Plug 'nvim-tree/nvim-web-devicons'
   Plug 'tpope/vim-fugitive'
