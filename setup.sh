@@ -1,46 +1,43 @@
 #!/bin/bash
-
 set -e
 
-echo "🔧 Setting up Neovim LSP & Plugin environment..."
+echo "🔧 Setting up Neovim with config"
 
-# Install Neovim if not present
+# ---------- Install Neovim ----------
 if ! command -v nvim &> /dev/null; then
   echo "🚀 Installing Neovim..."
-  if [[ -f /etc/debian_version ]]; then
-    sudo apt update && sudo apt install -y neovim
-  elif [[ -f /etc/redhat-release ]]; then
-    sudo dnf install -y neovim
-  elif command -v pacman &> /dev/null; then
+  if command -v pacman &> /dev/null; then
     sudo pacman -Syu --noconfirm neovim
+  elif [[ -f /etc/debian_version ]]; then
+    sudo apt update && sudo apt install -y neovim
   else
-    echo "❌ Unsupported distro. Please install Neovim manually."
+    echo "❌ Unsupported distro"
     exit 1
   fi
 fi
 
-# Install Node.js + npm
+# ---------- Install Node ----------
 if ! command -v npm &> /dev/null; then
-  echo "📦 Installing Node.js + npm..."
+  echo "📦 Installing Node.js..."
   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
   sudo apt install -y nodejs
 fi
 
-# Install Python and pip
+# ---------- Install Python ----------
 if ! command -v pip &> /dev/null; then
-  echo "🐍 Installing Python and pip..."
+  echo "🐍 Installing Python + pip..."
   sudo apt install -y python3 python3-pip
 fi
 
-# Install vim-plug
+# ---------- Install vim-plug ----------
 if [ ! -f ~/.local/share/nvim/site/autoload/plug.vim ]; then
   echo "🔌 Installing vim-plug..."
   curl -fLo ~/.local/share/nvim/site/autoload/plug.vim --create-dirs \
-       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 fi
 
-# Install global LSPs
-echo "📦 Installing global LSPs via npm..."
+# ---------- Install LSPs ----------
+echo "📦 Installing LSP servers..."
 npm install -g \
   pyright \
   typescript \
@@ -49,17 +46,18 @@ npm install -g \
   yaml-language-server \
   bash-language-server
 
-# Install python linting tools (optional)
 pip install --user pylint
 
-# Setup Neovim config directory
+# ---------- Create config ----------
 mkdir -p ~/.config/nvim
 
-# Write init.lua
 cat > ~/.config/nvim/init.lua << 'EOF'
+-- ==============================
 -- PLUGIN MANAGEMENT (vim-plug)
+-- ==============================
 vim.cmd [[
   call plug#begin('~/.vim/plugged')
+
   Plug 'mustache/vim-mustache-handlebars'
   Plug 'nvim-tree/nvim-tree.lua'
   Plug 'nvim-tree/nvim-web-devicons'
@@ -80,9 +78,15 @@ vim.cmd [[
   Plug 'L3MON4D3/LuaSnip'
   Plug 'saadparwaiz1/cmp_luasnip'
 
+  " Floating terminal (NvChad-like)
+  Plug 'voldikss/vim-floaterm'
+
   call plug#end()
 ]]
 
+-- ==============================
+-- BASIC OPTIONS
+-- ==============================
 vim.o.number = true
 vim.o.termguicolors = true
 vim.o.clipboard = 'unnamedplus'
@@ -93,6 +97,9 @@ vim.o.smartindent = true
 
 vim.cmd [[colorscheme tokyonight-night]]
 
+-- ==============================
+-- KEYMAPS (UNCHANGED)
+-- ==============================
 vim.keymap.set('n', '<C-n>', ':NvimTreeToggle<CR>')
 vim.keymap.set('n', '<leader>ff', ':Telescope find_files<CR>')
 vim.keymap.set('n', '<leader>fg', ':Telescope live_grep<CR>')
@@ -101,24 +108,37 @@ vim.keymap.set('n', '<leader>lg', ':LazyGit<CR>')
 vim.keymap.set('n', 'gd', vim.lsp.buf.definition)
 vim.keymap.set('n', 'K', vim.lsp.buf.hover)
 vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename)
-vim.keymap.set('n', '<leader>f', function() vim.lsp.buf.format { async = true } end)
+vim.keymap.set('n', '<leader>f', function()
+  vim.lsp.buf.format { async = true }
+end)
+
+-- ==============================
+-- FLOATING TERMINAL CONFIG
+-- ==============================
+vim.g.floaterm_width = 0.9
+vim.g.floaterm_height = 0.85
+vim.g.floaterm_borderchars = '─│─│╭╮╯╰'
+vim.g.floaterm_title = ' Terminal '
+vim.g.floaterm_autoclose = 0
+
+-- SAFE keybindings (no conflict)
+vim.keymap.set('n', '<leader>tt', ':FloatermToggle<CR>')
+vim.keymap.set('t', '<leader>tt', '<C-\\><C-n>:FloatermToggle<CR>')
+
+-- ==============================
+-- PLUGIN SETUPS
+-- ==============================
+require('nvim-tree').setup()
+require('gitsigns').setup()
+require('lualine').setup { options = { theme = 'nord' } }
 
 require('nvim-treesitter.configs').setup {
   highlight = { enable = true },
 }
-require('nvim-tree').setup()
-require('gitsigns').setup()
-require('lualine').setup {
-  options = {
-    theme = 'nord',
-    section_separators = '',
-    component_separators = '',
-  },
-}
-vim.g.lazygit_floating_window_winblend = 0
-vim.g.lazygit_floating_window_scaling_factor = 0.9
-vim.g.lazygit_use_neovim_remote = 1
 
+-- ==============================
+-- CMP + LSP
+-- ==============================
 local cmp = require'cmp'
 local luasnip = require'luasnip'
 
@@ -129,17 +149,13 @@ cmp.setup({
     end,
   },
   mapping = cmp.mapping.preset.insert({
-    ['<C-Space>'] = cmp.mapping.complete(),
     ['<CR>'] = cmp.mapping.confirm({ select = true }),
-    ['<Tab>'] = cmp.mapping.select_next_item(),
-    ['<S-Tab>'] = cmp.mapping.select_prev_item(),
   }),
-  sources = cmp.config.sources({
+  sources = {
     { name = 'nvim_lsp' },
-    { name = 'luasnip' },
     { name = 'buffer' },
-    { name = 'path' }
-  })
+    { name = 'path' },
+  }
 })
 
 local capabilities = require('cmp_nvim_lsp').default_capabilities()
@@ -155,20 +171,11 @@ lspconfig.bashls.setup { capabilities = capabilities }
 lspconfig.lua_ls.setup {
   capabilities = capabilities,
   settings = {
-    Lua = {
-      diagnostics = {
-        globals = { 'vim' },
-      }
-    }
+    Lua = { diagnostics = { globals = { 'vim' } } }
   }
 }
-vim.filetype.add({
-      extension = {
-        hbs = "html",
-      },
-})
-
 EOF
 
-echo "✅ Neovim setup completed!"
-echo "➡️  Now open Neovim and run:  :PlugInstall"
+echo "✅ Setup complete!"
+echo "➡ Open Neovim and run:  :PlugInstall"
+echo "➡ Floating terminal:  SPACE tt"
